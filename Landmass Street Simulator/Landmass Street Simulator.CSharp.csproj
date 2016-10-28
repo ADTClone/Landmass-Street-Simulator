@@ -65,13 +65,21 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\Scripts\Generator\PopulationGenerator.cs" />
+    <Compile Include="Assets\Scripts\Generator\Prototype\StubPopulationGenerator.cs" />
+    <Compile Include="Assets\Scripts\Generator\Prototype\StubTerrainGenerator.cs" />
+    <Compile Include="Assets\Scripts\Generator\RoadGenerator.cs" />
+    <Compile Include="Assets\Scripts\Generator\TerrainGenerator.cs" />
     <Compile Include="Assets\Scripts\Land\Chunk.cs" />
     <Compile Include="Assets\Scripts\Land\Features\Demographics.cs" />
     <Compile Include="Assets\Scripts\Land\Features\Housing.cs" />
+    <Compile Include="Assets\Scripts\Land\Features\Implementation\DemographicsImpl.cs" />
+    <Compile Include="Assets\Scripts\Land\Features\Implementation\TerrainImpl.cs" />
     <Compile Include="Assets\Scripts\Land\Features\RoadNetwork.cs" />
+    <Compile Include="Assets\Scripts\Land\Features\Structs\DemographicInfo.cs" />
     <Compile Include="Assets\Scripts\Land\Features\Terrain.cs" />
     <Compile Include="Assets\Scripts\Land\Landmass.cs" />
-    <Compile Include="Assets\Scripts\Generator\RoadGenerator.cs" />
+    <Compile Include="Assets\Scripts\Test Hub\TestHarness.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\SyntaxTree\UnityVS\2013\UnityVS.CSharp.targets" />
 </Project>
