@@ -68,7 +68,7 @@ namespace Assets.Scripts.Land
             {
                 for (int cols = 0; cols < chunkCols; cols++)
                 {
-                    Chunk newChunk = new Chunk();
+                    Chunk newChunk = new Chunk(rows, cols);
                     chunks[rows, cols] = newChunk;
                     allChunks.Add(newChunk);
                 }

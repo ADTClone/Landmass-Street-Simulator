@@ -1,10 +1,11 @@
 ﻿using UnityEngine;
-using System.Collections;
+using System.Collections.Generic;
 using Assets.Scripts.Land;
 using Assets.Scripts.Generator;
 using Assets.Scripts.Generator.Prototype;
 using Assets.Scripts.Land.Features;
 using Assets.Scripts.Land.Features.Structs;
+using Assets.Scripts.Generator.Implementation;
 
 public class TestHarness : MonoBehaviour {
     // Variables
@@ -14,6 +15,25 @@ public class TestHarness : MonoBehaviour {
 	void Start () {
         runHarness();
 	}
+
+    void Update()
+    {
+        // Simple debug for sorting
+        if (Input.GetKeyDown(KeyCode.Q))
+        {
+            // Sort by population in demographics desc
+            List<Chunk> chunks = new List<Chunk>(landmass.getChunks());
+            chunks.Sort((obj1, obj2) => obj2.getDemographics().getPopulation().CompareTo(obj1.getDemographics().getPopulation()));
+
+            // List top 10
+            string top10 = "";
+            for (int i = 0; i < Mathf.Min(chunks.Count, 10); i++)
+            {
+                top10 += chunks[i].getDemographics().getPopulation() + " ";
+            }
+            Debug.Log(top10);
+        }
+    }
 
     void OnGUI()
     {
@@ -45,7 +65,7 @@ public class TestHarness : MonoBehaviour {
     private void runHarness()
     {
         // 1. Create a landmass
-        landmass = new Landmass(10000, 10000, 1000);
+        landmass = new Landmass(100000, 100000, 1000);
 
         Debug.Log("Number of chunks: " + landmass.getChunks().Count);
 
@@ -62,5 +82,9 @@ public class TestHarness : MonoBehaviour {
         landmass.setDemographics(demographics);
 
         Debug.Log("Population of first chunk = " + demographics.getDemographics(landmass.getChunks()[0]).getPopulation());
+
+        // 4. Generate the road network for the landmass
+        RoadGenerator roadGenerator = new RoadGeneratorImpl(landmass);
+        roadGenerator.generateRoads();
     }
 }
