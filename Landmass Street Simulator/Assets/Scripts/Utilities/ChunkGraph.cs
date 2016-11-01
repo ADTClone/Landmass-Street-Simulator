@@ -12,7 +12,7 @@ namespace Assets.Scripts.Utilities
     /// Note: Should probably find an existing standard. This will do for
     /// now though.
     /// </summary>
-    class ChunkGraph
+    public class ChunkGraph
     {
         // Variables
         private HashSet<Chunk> nodes;

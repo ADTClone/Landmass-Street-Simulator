@@ -6,13 +6,21 @@ using Assets.Scripts.Generator.Prototype;
 using Assets.Scripts.Land.Features;
 using Assets.Scripts.Land.Features.Structs;
 using Assets.Scripts.Generator.Implementation;
+using Assets.Scripts.Utilities;
 
 public class TestHarness : MonoBehaviour {
     // Variables
+    public GameObject nodePrefab;
+
     private Landmass landmass;
+    private GameObject roadRepresentation;
+    private List<GameObject> roadRepresentationObjects;
 
 	// Functions
 	void Start () {
+        roadRepresentation = null;
+        roadRepresentationObjects = new List<GameObject>();
+
         runHarness();
 	}
 
@@ -32,6 +40,11 @@ public class TestHarness : MonoBehaviour {
                 top10 += chunks[i].getDemographics().getPopulation() + " ";
             }
             Debug.Log(top10);
+        }
+        // Graphical display of road network
+        if (Input.GetKeyDown(KeyCode.W))
+        {
+            displayRoadRepresentation();
         }
     }
 
@@ -85,6 +98,91 @@ public class TestHarness : MonoBehaviour {
 
         // 4. Generate the road network for the landmass
         RoadGenerator roadGenerator = new RoadGeneratorImpl(landmass);
-        roadGenerator.generateRoads();
+        RoadNetwork roadNetwork = roadGenerator.generateRoads();
+        landmass.setRoadNetwork(roadNetwork);
+    }
+
+    /// <summary>
+    /// A simple testing function to graph the road network
+    /// </summary>
+    private void displayRoadRepresentation()
+    {
+        if (roadRepresentation != null)
+        {
+            foreach (GameObject obj in roadRepresentationObjects)
+            {
+                Destroy(obj);
+            }
+
+            Destroy(roadRepresentation);
+
+            roadRepresentationObjects.Clear();
+        }
+
+        roadRepresentation = new GameObject();
+        roadRepresentation.transform.position = new Vector2(0, 0);
+
+        // Setup graph
+        ChunkGraph graph = landmass.getRoadNetwork().getMainChunkConnections();
+        HashSet<Chunk> drawnChunks = new HashSet<Chunk>();
+
+        // Determine dimensions
+        float rowDim = 10;
+        float colDim = 10;
+        float rowsFactor = rowDim / landmass.getChunkRows();
+        float colsFactor = colDim / landmass.getChunkCols();
+
+        // Draw the graph
+        foreach(Chunk chunk in graph.getNodes()) {
+            // Create the lines for connections
+            foreach (Chunk connectedChunk in graph.getConnectedNodes(chunk))
+            {
+                if (!drawnChunks.Contains(connectedChunk))
+                {
+                    // Create line
+                    GameObject line = createLine(new Vector2(chunk.getRowIndex() * rowsFactor - rowDim / 2.0f,
+                        chunk.getColIndex() * colsFactor - colDim / 2.0f),
+                        new Vector2(connectedChunk.getRowIndex() * rowsFactor - rowDim / 2.0f,
+                            connectedChunk.getColIndex() * colsFactor - colDim / 2.0f),
+                        Color.red);
+
+                    roadRepresentationObjects.Add(line);
+                }
+            }
+
+            // Create the node
+            GameObject node = createNode(new Vector2(chunk.getRowIndex() * rowsFactor - rowDim / 2.0f,
+                        chunk.getColIndex() * colsFactor - colDim / 2.0f));
+            roadRepresentationObjects.Add(node);
+
+            drawnChunks.Add(chunk);
+        }
+    }
+
+    /// <summary>
+    /// Creates a line between the two points, and returns a game object representing
+    /// this line.
+    /// </summary>
+    /// <param name="from"></param>
+    /// <param name="to"></param>
+    /// <returns></returns>
+    private GameObject createLine(Vector2 from, Vector2 to, Color colour)
+    {
+        GameObject gameObject = new GameObject();
+        LineRenderer line = gameObject.AddComponent<LineRenderer>();
+
+        line.SetPositions(new Vector3[] { new Vector3(from.x, from.y, 0), new Vector3(to.x, to.y, 0)});
+        line.SetWidth(0.05f, 0.05f);
+        line.SetColors(colour, colour);
+
+        return gameObject;
+    }
+
+    private GameObject createNode(Vector2 position)
+    {
+        GameObject node = Instantiate(nodePrefab);
+        node.transform.position = new Vector3(position.x, position.y);
+
+        return node;
     }
 }
