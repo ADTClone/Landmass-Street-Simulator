@@ -78,7 +78,7 @@ public class TestHarness : MonoBehaviour {
     private void runHarness()
     {
         // 1. Create a landmass
-        landmass = new Landmass(100000, 100000, 1000);
+        landmass = new Landmass(1000000, 1000000, 1000);
 
         Debug.Log("Number of chunks: " + landmass.getChunks().Count);
 
@@ -172,7 +172,7 @@ public class TestHarness : MonoBehaviour {
         LineRenderer line = gameObject.AddComponent<LineRenderer>();
 
         line.SetPositions(new Vector3[] { new Vector3(from.x, from.y, 0), new Vector3(to.x, to.y, 0)});
-        line.SetWidth(0.05f, 0.05f);
+        line.SetWidth(0.03f, 0.03f);
         line.SetColors(colour, colour);
 
         return gameObject;

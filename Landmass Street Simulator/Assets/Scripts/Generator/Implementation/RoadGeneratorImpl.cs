@@ -122,6 +122,12 @@ namespace Assets.Scripts.Generator.Implementation
                  *      Connect to at least one unconnected node and zero or more connected nodes
                  *      (will prioritise those that are closest to it, maybe an element of population)
                  */
+            // TODO: There are disconnected pieces of the graph. This is due to circular links forming(ie. a node that creates
+            //       a circular connection is closer than a graph far away that doesn't create a circular connection(kinda).
+            //
+            //       Maybe in better terms, there is a node further away that connects this node to more notes, not sure.
+            //       
+            //       Maybe deal with them at the end after everything else.
             HashSet<Chunk> nonProcessedNodes = new HashSet<Chunk>(nodeChunks);
             while (nonProcessedNodes.Count > 0)
             {
@@ -132,32 +138,46 @@ namespace Assets.Scripts.Generator.Implementation
                 // new nodes due to selection/range constraints
                 if (connectedNodesNotProcessed.Count == 0)
                 {
+                    Debug.Log("Leftover: " + nonProcessedNodes.Count);
                     newConnectedNodesNotProcessed = new HashSet<Chunk>(nonProcessedNodes);
                 }
 
                 // These are nodes that have been connected and not processed
+                int maximumConnections = 2; // TODO: Take out as constant
                 foreach (Chunk connectedNode in connectedNodesNotProcessed)
                 {
                     List<Chunk> candidates = new List<Chunk>();
 
                     // a) Look for nodes in an outward expanding radius to connect to(a good way to find the closest nodes)
-                    // The radius is a square radius
+                    // The radius is a square radius with a width which starts at the range and expands outwards
                     int range = 1;
-                    while (candidates.Count < 2) // Keep expanding until 2 candidates are found
+                    float rangeWidth = 1;
+                    while (candidates.Count < maximumConnections) // Keep expanding until at least 2 candidates are found, 
+                                                                  // one unlinked(unless no unlinked are left)
                     {
+                        int rangeUpper = range + Mathf.FloorToInt(rangeWidth) - 1;
+                        int rangeLower = range;
+
                         foreach (Chunk possibleConnection in nodeChunks)
                         {
                             // Check if the connection is within the desired radius(x/y +- range)
-                            if((Mathf.Abs(possibleConnection.getRowIndex() - connectedNode.getRowIndex()) == range &&
-                                Mathf.Abs(possibleConnection.getColIndex() - connectedNode.getColIndex()) <= range) || 
-                                (Mathf.Abs(possibleConnection.getColIndex() - connectedNode.getColIndex()) == range &&
-                                Mathf.Abs(possibleConnection.getRowIndex() - connectedNode.getRowIndex()) <= range))
+                            int rowRange = Mathf.Abs(possibleConnection.getRowIndex() - connectedNode.getRowIndex());
+                            int colRange = Mathf.Abs(possibleConnection.getColIndex() - connectedNode.getColIndex());
+
+                            if((rowRange >= rangeLower && rowRange <= rangeUpper && colRange <= rangeUpper) ||
+                                (colRange >= rangeLower && colRange <= rangeUpper && rowRange <= rangeUpper))
                             {
-                                candidates.Add(possibleConnection);
+                                // Make sure the node isn't linked to the candidate
+                                if (!chunkGraph.isLinkedTo(connectedNode, possibleConnection)) 
+                                {
+                                    candidates.Add(possibleConnection);
+                                }
                             }
                         }
 
-                        range++;
+                        // Increment the range/width higher as time goes on(ie. search more ground as there isn't anything close)
+                        range += Mathf.FloorToInt(rangeWidth);
+                        rangeWidth += 0.3f; // Some rate for the range increment
                     }
 
                     if (candidates.Count == 0)
@@ -167,11 +187,20 @@ namespace Assets.Scripts.Generator.Implementation
 
                     // b) Connect to all the candidates
                     //TODO: Randomly choose them instead
-                    foreach (Chunk candidate in candidates)
+                    int totalCandidatesAllowed = UnityEngine.Random.Range(1, maximumConnections);
+                    int totalCandidatesSoFar = 0;
+                    while (totalCandidatesSoFar <= totalCandidatesAllowed && candidates.Count > 0)
                     {
-                        chunkGraph.linkNode(connectedNode, candidate);
+                        // Choose a random candidate each time
+                        Chunk candidate = candidates[UnityEngine.Random.Range(0, candidates.Count - 1)];
 
+                        chunkGraph.linkNode(connectedNode, candidate);
                         newConnectedNodesNotProcessed.Add(candidate);
+
+                        totalCandidatesSoFar++;
+
+                        // Make sure the candidate isn't selected again
+                        candidates.Remove(candidate);
                     }
 
                     // c) Identify as processed and remove

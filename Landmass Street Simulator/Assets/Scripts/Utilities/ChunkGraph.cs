@@ -70,5 +70,26 @@ namespace Assets.Scripts.Utilities
         {
             return nodes;
         }
+
+        /// <summary>
+        /// Checks whether the node has been linked in the graph.
+        /// </summary>
+        /// <param name="node">The node to check.</param>
+        /// <returns>True if it links to at least one other node, false otherwise.</returns>
+        public bool isLinked(Chunk node)
+        {
+            return links.ContainsKey(node) && getConnectedNodes(node).Count > 0;
+        }
+
+        /// <summary>
+        /// Checks whether the node is linked to another specified node.
+        /// </summary>
+        /// <param name="node">The node to check.</param>
+        /// <param name="linkedTo">The node to check whether it is linked to.</param>
+        /// <returns>True if the node is linked to the other node.</returns>
+        public bool isLinkedTo(Chunk node, Chunk linkedTo)
+        {
+            return links[node].Contains(linkedTo);
+        }
     }
 }
