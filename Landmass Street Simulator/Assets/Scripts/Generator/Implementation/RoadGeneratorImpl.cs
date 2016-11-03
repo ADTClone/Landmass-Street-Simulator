@@ -12,6 +12,10 @@ namespace Assets.Scripts.Generator.Implementation
 {
     class RoadGeneratorImpl : RoadGenerator
     {
+        // Constants
+        private const int NUM_MAJOR_CHUNKS = 1000;
+        private const int MAXIMUM_CONNECTIONS = 2;
+
         // Variables
         private Landmass landmass;
 
@@ -36,9 +40,9 @@ namespace Assets.Scripts.Generator.Implementation
                 
                 // Only add and re-sort if we haven't got 1000 yet or this chunk is better than the worst in the list
                 // TODO: There will be a more efficient way to do this
-                if (topChunks.Count < 1000 || chunkPopulation > lowestPopulation)
+                if (topChunks.Count < NUM_MAJOR_CHUNKS || chunkPopulation > lowestPopulation)
                 {
-                    if (topChunks.Count >= 1000)
+                    if (topChunks.Count >= NUM_MAJOR_CHUNKS)
                     {
                         topChunks.Remove(lowestChunk);
                     }
@@ -103,10 +107,10 @@ namespace Assets.Scripts.Generator.Implementation
             }
 
             // b) Connect major nodes together
-            List<Chunk> connectedNodesNotProcessed = new List<Chunk>();
+            List<Chunk> majorNodes = new List<Chunk>();
             for (int i = 0; i < 10; i++)
             {
-                connectedNodesNotProcessed.Add(nodeChunks[i]);
+                majorNodes.Add(nodeChunks[i]);
 
                 // Link to the previous node
                 // TODO: Implement a more realistic way of doing this
@@ -128,23 +132,56 @@ namespace Assets.Scripts.Generator.Implementation
             //       Maybe in better terms, there is a node further away that connects this node to more notes, not sure.
             //       
             //       Maybe deal with them at the end after everything else.
-            HashSet<Chunk> nonProcessedNodes = new HashSet<Chunk>(nodeChunks);
-            while (nonProcessedNodes.Count > 0)
-            {
-                HashSet<Chunk> newConnectedNodesNotProcessed = new HashSet<Chunk>();
+            HashSet<Chunk> unprocessedNodes = new HashSet<Chunk>(nodeChunks); // The nodes that have yet to be processed at all
+            HashSet<Chunk> connectedGraphNodes = new HashSet<Chunk>(majorNodes); // These are the nodes that have been connected to the graph
+            List<Chunk> nodesBeingProcessed = new List<Chunk>(majorNodes); // The nodes that are correctly being processed
 
-                // If there are no natural nodes left to process, connect all the rest
-                // This will happen if the natural flow out from the "major nodes" stops finding
-                // new nodes due to selection/range constraints
-                if (connectedNodesNotProcessed.Count == 0)
+            while (unprocessedNodes.Count > 0)
+            {
+                // Check if there are no nodes left waiting to be processed
+                if (nodesBeingProcessed.Count == 0)
                 {
-                    Debug.Log("Leftover: " + nonProcessedNodes.Count);
-                    newConnectedNodesNotProcessed = new HashSet<Chunk>(nonProcessedNodes);
+                    // This means there are nodes that didn't get connected to the main graph
+                    // Need to find the unprocessed node that is closest to the connected graph,
+                    // connect that node and continue on processing from that.
+                    Debug.Log("Leftover: " + unprocessedNodes.Count);
+
+                    // Find the closest unprocessed node to the connected graph
+                    Chunk closestUnprocessedNode = null;
+                    Chunk closestConnectedNode = null;
+                    float closestDistance = float.MaxValue;
+                    foreach (Chunk unprocessedNode in unprocessedNodes)
+                    {
+                        foreach (Chunk connectedNode in connectedGraphNodes)
+                        {
+                            // Get the distance between the nodes
+                            float distance = Mathf.Sqrt(Mathf.Pow(unprocessedNode.getRowIndex() - connectedNode.getRowIndex(), 2) + 
+                                Mathf.Pow(unprocessedNode.getColIndex() - connectedNode.getColIndex(), 2));
+
+                            // Check if it is closer than the top so far
+                            if (distance < closestDistance)
+                            {
+                                closestDistance = distance;
+                                closestUnprocessedNode = unprocessedNode;
+                                closestConnectedNode = connectedNode;
+                            }
+                        }
+                    }
+
+                    // Connect these nodes together and process
+                    // TODO: This is duplicated, best to refactor and remove later
+                    chunkGraph.linkNode(closestConnectedNode, closestUnprocessedNode);
+                    nodesBeingProcessed.Add(closestUnprocessedNode); // Node will now be processed
+                    connectedGraphNodes.Add(closestUnprocessedNode); // Node is now connected to the graph
+
+                    /*nodesBeingProcessed = new List<Chunk>(nodesToBeProcessed);
+                    continue;*/
                 }
 
                 // These are nodes that have been connected and not processed
-                int maximumConnections = 2; // TODO: Take out as constant
-                foreach (Chunk connectedNode in connectedNodesNotProcessed)
+                HashSet<Chunk> nodesToBeProcessedNext = new HashSet<Chunk>(); // The nodes that will be processed next iteration
+                int maximumConnections = MAXIMUM_CONNECTIONS;
+                foreach (Chunk connectedNode in nodesBeingProcessed)
                 {
                     List<Chunk> candidates = new List<Chunk>();
 
@@ -185,8 +222,7 @@ namespace Assets.Scripts.Generator.Implementation
                         Debug.Log("DEBUG: 0 candidates");
                     }
 
-                    // b) Connect to all the candidates
-                    //TODO: Randomly choose them instead
+                    // b) Connect to a random selection of candidates
                     int totalCandidatesAllowed = UnityEngine.Random.Range(1, maximumConnections);
                     int totalCandidatesSoFar = 0;
                     while (totalCandidatesSoFar <= totalCandidatesAllowed && candidates.Count > 0)
@@ -195,7 +231,8 @@ namespace Assets.Scripts.Generator.Implementation
                         Chunk candidate = candidates[UnityEngine.Random.Range(0, candidates.Count - 1)];
 
                         chunkGraph.linkNode(connectedNode, candidate);
-                        newConnectedNodesNotProcessed.Add(candidate);
+                        nodesToBeProcessedNext.Add(candidate); // Node will be processed next
+                        connectedGraphNodes.Add(candidate); // Node is now connected to the graph
 
                         totalCandidatesSoFar++;
 
@@ -204,21 +241,21 @@ namespace Assets.Scripts.Generator.Implementation
                     }
 
                     // c) Identify as processed and remove
-                    nonProcessedNodes.Remove(connectedNode);
+                    unprocessedNodes.Remove(connectedNode);
                 }
 
                 // Remove existing nodes which are now processed, and add new nodes to process
-                connectedNodesNotProcessed.Clear();
-                foreach (Chunk chunk in newConnectedNodesNotProcessed)
+                nodesBeingProcessed.Clear();
+                foreach (Chunk chunk in nodesToBeProcessedNext)
                 {
                     // Make sure it hasn't been processed yet
-                    if (nonProcessedNodes.Contains(chunk))
+                    if (unprocessedNodes.Contains(chunk))
                     {
-                        connectedNodesNotProcessed.Add(chunk);
+                        nodesBeingProcessed.Add(chunk);
                     }
                 }
 
-                newConnectedNodesNotProcessed.Clear();
+                nodesToBeProcessedNext.Clear();
             }
 
             // Last. Create a road network
