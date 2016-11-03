@@ -65,6 +65,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\Scripts\Generator\Implementation\BasicPopulationGeneratorImpl.cs" />
     <Compile Include="Assets\Scripts\Generator\Implementation\RoadGeneratorImpl.cs" />
     <Compile Include="Assets\Scripts\Generator\PopulationGenerator.cs" />
     <Compile Include="Assets\Scripts\Generator\Prototype\StubPopulationGenerator.cs" />

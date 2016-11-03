@@ -24,7 +24,7 @@ namespace Assets.Scripts.Land.Features.Implementation
 
         public void setDemographics(Chunk chunk, Structs.DemographicInfo demographicsInfo)
         {
-            this.demographicsInfo.Add(chunk, demographicsInfo);
+            this.demographicsInfo[chunk] = demographicsInfo;
             chunk.setDemographics(demographicsInfo);
         }
     }

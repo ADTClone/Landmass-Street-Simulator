@@ -70,6 +70,7 @@ public class TestHarness : MonoBehaviour {
                         totalWidth / landmass.getChunkRows(), 
                         totalHeight / landmass.getChunkCols()), 
                         info.getPopulation().ToString());
+                    
                 }
             }
         }
@@ -90,7 +91,7 @@ public class TestHarness : MonoBehaviour {
         Debug.Log("Terrain of first chunk = " + terrain.getTerrainType(landmass.getChunks()[0]));
 
         // 3. Generate the population for the landmass
-        PopulationGenerator populationGenerator = new StubPopulationGenerator(landmass);
+        PopulationGenerator populationGenerator = new BasicPopulationGeneratorImpl(landmass);//new StubPopulationGenerator(landmass);
         Demographics demographics = populationGenerator.generatePopulation();
         landmass.setDemographics(demographics);
 
@@ -134,6 +135,8 @@ public class TestHarness : MonoBehaviour {
 
         // Draw the graph
         foreach(Chunk chunk in graph.getNodes()) {
+            Debug.Log(chunk.getRowIndex() + "," + chunk.getColIndex());
+
             // Create the lines for connections
             foreach (Chunk connectedChunk in graph.getConnectedNodes(chunk))
             {
