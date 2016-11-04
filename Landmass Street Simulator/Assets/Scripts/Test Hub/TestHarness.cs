@@ -15,11 +15,14 @@ public class TestHarness : MonoBehaviour {
     private Landmass landmass;
     private GameObject roadRepresentation;
     private List<GameObject> roadRepresentationObjects;
+    private Material lineMaterial;
 
 	// Functions
 	void Start () {
         roadRepresentation = null;
         roadRepresentationObjects = new List<GameObject>();
+
+        lineMaterial = new Material(Shader.Find("Particles/Additive"));
 
         runHarness();
 	}
@@ -133,9 +136,14 @@ public class TestHarness : MonoBehaviour {
         float rowsFactor = rowDim / landmass.getChunkRows();
         float colsFactor = colDim / landmass.getChunkCols();
 
+        // Draw boundaries
+        createLine(new Vector2(-rowDim/2.0f, -colDim/2.0f), new Vector2(rowDim/2.0f, -colDim/2.0f), Color.red);
+        createLine(new Vector2(-rowDim / 2.0f, colDim / 2.0f), new Vector2(rowDim / 2.0f, colDim / 2.0f), Color.red);
+        createLine(new Vector2(-rowDim / 2.0f, -colDim / 2.0f), new Vector2(-rowDim / 2.0f, colDim / 2.0f), Color.red);
+        createLine(new Vector2(rowDim / 2.0f, -colDim / 2.0f), new Vector2(rowDim / 2.0f, colDim / 2.0f), Color.red);
+
         // Draw the graph
         foreach(Chunk chunk in graph.getNodes()) {
-            Debug.Log(chunk.getRowIndex() + "," + chunk.getColIndex());
 
             // Create the lines for connections
             foreach (Chunk connectedChunk in graph.getConnectedNodes(chunk))
@@ -147,15 +155,22 @@ public class TestHarness : MonoBehaviour {
                         chunk.getColIndex() * colsFactor - colDim / 2.0f),
                         new Vector2(connectedChunk.getRowIndex() * rowsFactor - rowDim / 2.0f,
                             connectedChunk.getColIndex() * colsFactor - colDim / 2.0f),
-                        Color.red);
+                        Color.white);
 
                     roadRepresentationObjects.Add(line);
                 }
             }
 
+            // Get the nodes colour
+            Color nodeColor = Color.white;
+            if (landmass.getDemographics().isCity(chunk))
+            {
+                nodeColor = Color.red;
+            }
+
             // Create the node
             GameObject node = createNode(new Vector2(chunk.getRowIndex() * rowsFactor - rowDim / 2.0f,
-                        chunk.getColIndex() * colsFactor - colDim / 2.0f));
+                        chunk.getColIndex() * colsFactor - colDim / 2.0f), nodeColor);
             roadRepresentationObjects.Add(node);
 
             drawnChunks.Add(chunk);
@@ -175,16 +190,18 @@ public class TestHarness : MonoBehaviour {
         LineRenderer line = gameObject.AddComponent<LineRenderer>();
 
         line.SetPositions(new Vector3[] { new Vector3(from.x, from.y, 0), new Vector3(to.x, to.y, 0)});
-        line.SetWidth(0.03f, 0.03f);
+        line.SetWidth(0.01f, 0.01f);
         line.SetColors(colour, colour);
+        line.material = lineMaterial;
 
         return gameObject;
     }
 
-    private GameObject createNode(Vector2 position)
+    private GameObject createNode(Vector2 position, Color color)
     {
         GameObject node = Instantiate(nodePrefab);
         node.transform.position = new Vector3(position.x, position.y);
+        node.GetComponent<SpriteRenderer>().color = color;
 
         return node;
     }

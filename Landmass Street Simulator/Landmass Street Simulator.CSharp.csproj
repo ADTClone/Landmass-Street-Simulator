@@ -79,7 +79,9 @@
     <Compile Include="Assets\Scripts\Land\Features\Implementation\RoadNetworkImpl.cs" />
     <Compile Include="Assets\Scripts\Land\Features\Implementation\TerrainImpl.cs" />
     <Compile Include="Assets\Scripts\Land\Features\RoadNetwork.cs" />
+    <Compile Include="Assets\Scripts\Land\Features\Structs\City.cs" />
     <Compile Include="Assets\Scripts\Land\Features\Structs\DemographicInfo.cs" />
+    <Compile Include="Assets\Scripts\Land\Features\Structs\Suburb.cs" />
     <Compile Include="Assets\Scripts\Land\Features\Terrain.cs" />
     <Compile Include="Assets\Scripts\Land\Landmass.cs" />
     <Compile Include="Assets\Scripts\Test Hub\TestHarness.cs" />

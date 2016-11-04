@@ -20,15 +20,14 @@ namespace Assets.Scripts.Generator.Implementation
     class BasicPopulationGeneratorImpl : PopulationGenerator
     {
         // Constants
-        private const int LARGE_POPULATION_CHUNKS = 100;
-        private const int LARGE_POPULATION_MIN = 50000;
-        private const int LARGE_POPULATION_MAX = 50000;
-        private const int POPULATION_LOWER_LIMIT = 100; // The limit at which spreading stops
-        private const float POPULATION_DECAY_RATE = 0.97f;
-        private const float POPULATION_DECAY_RATE_VARIANCE = 0.01f;
-        private const float INITIAL_DECAY_RATE = 0.7f;
-        private const float POPULATION_LOCAL_VARIANCE = 0.1f;
-        private const int RANGE_INCREMENT = 1;
+        private const int LARGE_POPULATION_CHUNKS = 10;
+        private const int LARGE_POPULATION_MIN = 300000;
+        private const int LARGE_POPULATION_MAX = 500000;
+        private const float INITIAL_CHUNK_PCT = 0.05f;
+        private const float CHUNK_PCT_DECAY = 0.01f;
+        private const float CHUNK_PCT_MIN = 0.01f;
+        private const int MAXIMUM_SUBURBS_PER_CITY = 100;
+        private const float RANGE_EXPANSION_FACTOR = 1.3f;
 
         // Variables
         private Landmass landmass;
@@ -52,115 +51,126 @@ namespace Assets.Scripts.Generator.Implementation
         // Functions
         public Demographics generatePopulation()
         {
-            // TODO: Something seems to be keeping the population stuck in an area on bigger sizes
-            // Randomly choose a few chunks to place "large" population centers
-            HashSet<Chunk> largePopulationChunks = new HashSet<Chunk>();
-            for (int i = 0; i < LARGE_POPULATION_CHUNKS; i++)
-            {
+            HashSet<Chunk> cityChunks = new HashSet<Chunk>();
+            // 1. Randomly choose chunks to represent cities - make sure they are not too close to other chunks
+            int chunksChosen = 0;
+            while(chunksChosen < LARGE_POPULATION_CHUNKS) {
                 // Choose a random chunk
                 Chunk randomChunk = landmass.getChunks()[UnityEngine.Random.Range(0, landmass.getChunks().Count - 1)];
 
-                // Set its population to a random value
-                setPopulation(randomChunk, UnityEngine.Random.Range(LARGE_POPULATION_MIN, LARGE_POPULATION_MAX));
-
-                // Add it to a list
-                largePopulationChunks.Add(randomChunk);
-            }
-
-            // Recursively spread out the population from these chunks until they run out of population to distribute
-            foreach (Chunk chunk in largePopulationChunks)
-            {
-                float currentPopulation = getPopulation(chunk) * INITIAL_DECAY_RATE;
-                int chunkRowIndex = chunk.getRowIndex();
-                int chunkColIndex = chunk.getColIndex();
-
-                // Loop in expanding ranges, spreading the population until it completely decays
-                int range = 1;
-                while (currentPopulation > POPULATION_LOWER_LIMIT)
+                // Make sure it isn't already chosen
+                if (cityChunks.Contains(randomChunk))
                 {
-                    // Loop through rows
-                    for (int rowIndex = chunkRowIndex - range; rowIndex <= chunkRowIndex + range; rowIndex++)
-                    {
-                        // Make sure it isn't off the edge of the area
-                        if (rowIndex < 0 || rowIndex > landmass.getChunkRows() - 1)
-                        {
-                            continue;
-                        }
-
-                        // Bottom side
-                        int colIndex = chunkColIndex - range;
-                        if (!(colIndex < 0 || colIndex > landmass.getChunkCols() - 1))
-                        {
-                            // We can spread the population now
-                            Chunk spreadTo = landmass.getChunk(rowIndex, colIndex);
-                            int spreadToPopulation = (int)Math.Floor(UnityEngine.Random.Range(currentPopulation * (1.0f - POPULATION_LOCAL_VARIANCE), 
-                                                                        currentPopulation * (1.0f + POPULATION_LOCAL_VARIANCE)));
-
-                            // Spread it
-                            addPopulation(spreadTo, spreadToPopulation);
-                        }
-
-                        // Top side
-                        colIndex = chunkColIndex + range;
-                        if (!(colIndex < 0 || colIndex > landmass.getChunkCols() - 1))
-                        {
-                            // We can spread the population now
-                            Chunk spreadTo = landmass.getChunk(rowIndex, colIndex);
-                            int spreadToPopulation = (int)Math.Floor(UnityEngine.Random.Range(currentPopulation * (1.0f - POPULATION_LOCAL_VARIANCE),
-                                                                        currentPopulation * (1.0f + POPULATION_LOCAL_VARIANCE)));
-
-                            // Spread it
-                            addPopulation(spreadTo, spreadToPopulation);
-                        }
-
-                    }
-
-                    // Loop through cols(excluding diagonals)
-                    for (int colIndex = chunkColIndex - range + 1; colIndex <= chunkColIndex + range - 1; colIndex++)
-                    {
-                        // Make sure it isn't off the edge of the area
-                        if (colIndex < 0 || colIndex > landmass.getChunkRows() - 1)
-                        {
-                            continue;
-                        }
-
-                        // Left side
-                        int rowIndex = chunkRowIndex - range;
-
-                        if (!(rowIndex < 0 || rowIndex > landmass.getChunkRows() - 1))
-                        {
-                            // We can spread the population now
-                            Chunk spreadTo = landmass.getChunk(rowIndex, colIndex);
-                            int spreadToPopulation = (int)Math.Floor(UnityEngine.Random.Range(currentPopulation * (1.0f - POPULATION_LOCAL_VARIANCE), 
-                                                                        currentPopulation * (1.0f + POPULATION_LOCAL_VARIANCE)));
-
-                            // Spread it
-                            addPopulation(spreadTo, spreadToPopulation);
-                        }
-
-                        // Right side
-                        rowIndex = chunkRowIndex + range;
-
-                        if (!(rowIndex < 0 || rowIndex > landmass.getChunkRows() - 1))
-                        {
-                            // We can spread the population now
-                            Chunk spreadTo = landmass.getChunk(rowIndex, colIndex);
-                            int spreadToPopulation = (int)Math.Floor(UnityEngine.Random.Range(currentPopulation * (1.0f - POPULATION_LOCAL_VARIANCE),
-                                                                        currentPopulation * (1.0f + POPULATION_LOCAL_VARIANCE)));
-
-                            // Spread it
-                            addPopulation(spreadTo, spreadToPopulation);
-                        }
-
-                    }
-
-                    // Increase the range
-                    range += RANGE_INCREMENT;
-
-                    // Decay the population
-                    currentPopulation *= (UnityEngine.Random.Range(POPULATION_DECAY_RATE - POPULATION_DECAY_RATE_VARIANCE, POPULATION_DECAY_RATE + POPULATION_DECAY_RATE_VARIANCE));
+                    continue;
                 }
+
+                // TODO: Make sure it isn't too close to other cities
+
+                // Add it to the list
+                cityChunks.Add(randomChunk);
+
+                chunksChosen++;
             }
+
+            List<Suburb> suburbs = new List<Suburb>();
+            List<City> cities = new List<City>();
+
+            // 2. Within the cities, spread out suburbs around the cities, spreading them further out the further away from the city they get
+            HashSet<Chunk> suburbChunks = new HashSet<Chunk>();
+            foreach (Chunk cityChunk in cityChunks)
+            {
+                // a) Generate a population for the city
+                int cityPopulation = UnityEngine.Random.Range(LARGE_POPULATION_MIN, LARGE_POPULATION_MAX);
+
+                // b) Create demographics for the city
+                DemographicInfo cityDemographics = new DemographicInfo(cityPopulation);
+                List<Suburb> citySuburbs = new List<Suburb>();
+
+                // c) Define a center suburb for the city and find its population
+                int cityDecayPopulation = cityPopulation;
+                float cityDecayRate = INITIAL_CHUNK_PCT;
+
+                int centerSuburbPopulation = (int)Math.Floor(cityPopulation * cityDecayRate);
+
+                cityDecayPopulation -= centerSuburbPopulation;
+                cityDecayRate = Math.Max(cityDecayRate - CHUNK_PCT_DECAY, CHUNK_PCT_MIN);
+
+                Suburb centerSuburb = new Suburb(cityChunk, new List<Chunk> { cityChunk }, new DemographicInfo(centerSuburbPopulation));
+                suburbs.Add(centerSuburb);
+                suburbChunks.Add(cityChunk);
+                citySuburbs.Add(centerSuburb);
+                setPopulation(cityChunk, centerSuburbPopulation);
+
+                // d) Expand outwards randomly choosing suburbs for the city until no population is left or maximum suburbs is met
+                // TODO: Come up with a more accurate range exit condition
+                int range = 1;
+                while (cityDecayPopulation > 0 && 
+                    citySuburbs.Count < MAXIMUM_SUBURBS_PER_CITY && 
+                    !(range > landmass.getChunkCols() && range > landmass.getChunkRows()))
+                {
+                    // i) Randomly sample along a circle of range, placing suburbs, making sure a suburb doesn't already exist
+                    for (int i = 0; i < UnityEngine.Random.Range(3, 5); i++) // TODO: Make this more flexible
+                    {
+                        // Make sure we haven't run out of population yet
+                        if (cityDecayPopulation <= 0)
+                        {
+                            break;
+                        }
+
+                        // TODO: Vary range a bit more with randomness
+                        UnityEngine.Vector2 randomRangeCircle = UnityEngine.Random.insideUnitCircle * (range + 0.5f);
+                        
+                        // Get the row/col indexes as deviations from the city chunk index
+                        int rowIndex = (int)Math.Round(randomRangeCircle.x) + cityChunk.getRowIndex();
+                        int colIndex = (int)Math.Round(randomRangeCircle.y) + cityChunk.getColIndex();
+
+                        // Check if they are outside of the boundaries, and if so ignore
+                        if (rowIndex < 0 || rowIndex > landmass.getChunkRows() - 1 || colIndex < 0 || colIndex > landmass.getChunkCols() - 1)
+                        {
+                            continue;
+                        }
+
+                        // Get the chunk and make sure it hasn't already been chosen
+                        Chunk suburbChunk = landmass.getChunk(rowIndex, colIndex);
+                        if (suburbChunks.Contains(suburbChunk))
+                        {
+                            continue;
+                        }
+
+                        // Determine the population that the suburb gets
+                        int suburbPopulation = (int)Math.Floor(cityPopulation * cityDecayRate);
+
+                        cityDecayPopulation -= suburbPopulation;
+                        cityDecayRate = Math.Max(cityDecayRate - CHUNK_PCT_DECAY, CHUNK_PCT_MIN);
+
+                        Suburb suburb = new Suburb(suburbChunk, new List<Chunk> { suburbChunk }, new DemographicInfo(suburbPopulation));
+                        suburbs.Add(suburb);
+                        suburbChunks.Add(suburbChunk);
+                        citySuburbs.Add(suburb);
+                        setPopulation(suburbChunk, suburbPopulation);
+                    }
+
+                    // ii) Expand the range
+                    range = (int)Math.Ceiling(range * RANGE_EXPANSION_FACTOR);
+                }
+
+                // e) Create the city
+                City city = new City(centerSuburb, citySuburbs, cityDemographics);
+                cities.Add(city);
+            }
+
+            // 3. Add the suburbs and cities
+            foreach (City city in cities)
+            {
+                demographics.addCity(city);
+            }
+
+            foreach (Suburb suburb in suburbs)
+            {
+                demographics.addSuburb(suburb);
+            }
+
+            UnityEngine.Debug.Log("Total suburbs: " + suburbs.Count);
 
             // Return the demographics
             return demographics;
@@ -191,6 +201,25 @@ namespace Assets.Scripts.Generator.Implementation
             DemographicInfo chunkInfo = demographics.getDemographics(chunk);
 
             setPopulation(chunk, chunkInfo.getPopulation() + population);
+        }
+
+        /// <summary>
+        /// Averages the population of an existing chunk if it is not zero.
+        /// </summary>
+        /// <param name="chunk">The chunk to average population to.</param>
+        /// <param name="population">The population to average.</param>
+        private void averagePopulation(Chunk chunk, int population)
+        {
+            DemographicInfo chunkInfo = demographics.getDemographics(chunk);
+
+            if (chunkInfo.getPopulation() <= 0)
+            {
+                setPopulation(chunk, population);
+            }
+            else
+            {
+                setPopulation(chunk, (int)Math.Round((chunkInfo.getPopulation() + population) / 2.0f));
+            }
         }
 
         /// <summary>
