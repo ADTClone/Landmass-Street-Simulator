@@ -82,48 +82,22 @@ namespace Assets.Scripts.Generator.Implementation
             //       Maybe deal with them at the end after everything else.
             HashSet<Chunk> unprocessedNodes = new HashSet<Chunk>(nodeChunks); // The nodes that have yet to be processed at all
             HashSet<Chunk> connectedGraphNodes = new HashSet<Chunk>(majorNodes); // These are the nodes that have been connected to the graph
+            HashSet<Chunk> unconnectedGraphNodes = new HashSet<Chunk>();
             List<Chunk> nodesBeingProcessed = new List<Chunk>(majorNodes); // The nodes that are correctly being processed
+            bool addToConnectedGraph = true;
 
             while (unprocessedNodes.Count > 0)
             {
                 // Check if there are no nodes left waiting to be processed
                 if (nodesBeingProcessed.Count == 0)
                 {
-                    // This means there are nodes that didn't get connected to the main graph
-                    // Need to find the unprocessed node that is closest to the connected graph,
-                    // connect that node and continue on processing from that.
-                    Debug.Log("Leftover: " + unprocessedNodes.Count);
+                    // Add all leftover nodes to the to process list
+                    nodesBeingProcessed = new List<Chunk>(unprocessedNodes);
 
-                    // Find the closest unprocessed node to the connected graph
-                    Chunk closestUnprocessedNode = null;
-                    Chunk closestConnectedNode = null;
-                    float closestDistance = float.MaxValue;
-                    foreach (Chunk unprocessedNode in unprocessedNodes)
-                    {
-                        foreach (Chunk connectedNode in connectedGraphNodes)
-                        {
-                            // Get the distance between the nodes
-                            float distance = Mathf.Sqrt(Mathf.Pow(unprocessedNode.getRowIndex() - connectedNode.getRowIndex(), 2) + 
-                                Mathf.Pow(unprocessedNode.getColIndex() - connectedNode.getColIndex(), 2));
+                    // Add the left over to the unconnected graph nodes, as they will not be connected
+                    unconnectedGraphNodes = new HashSet<Chunk>(unprocessedNodes);
 
-                            // Check if it is closer than the top so far
-                            if (distance < closestDistance)
-                            {
-                                closestDistance = distance;
-                                closestUnprocessedNode = unprocessedNode;
-                                closestConnectedNode = connectedNode;
-                            }
-                        }
-                    }
-
-                    // Connect these nodes together and process
-                    // TODO: This is duplicated, best to refactor and remove later
-                    chunkGraph.linkNode(closestConnectedNode, closestUnprocessedNode);
-                    nodesBeingProcessed.Add(closestUnprocessedNode); // Node will now be processed
-                    connectedGraphNodes.Add(closestUnprocessedNode); // Node is now connected to the graph
-
-                    /*nodesBeingProcessed = new List<Chunk>(nodesToBeProcessed);
-                    continue;*/
+                    addToConnectedGraph = false; // None of these will be "connected"
                 }
 
                 // These are nodes that have been connected and not processed
@@ -179,8 +153,12 @@ namespace Assets.Scripts.Generator.Implementation
                         Chunk candidate = candidates[UnityEngine.Random.Range(0, candidates.Count - 1)];
 
                         chunkGraph.linkNode(connectedNode, candidate);
-                        nodesToBeProcessedNext.Add(candidate); // Node will be processed next
-                        connectedGraphNodes.Add(candidate); // Node is now connected to the graph
+
+                        if (addToConnectedGraph) // Only do this if we are to add it to the connected graph
+                        {
+                            nodesToBeProcessedNext.Add(candidate); // Node will be processed next
+                            connectedGraphNodes.Add(candidate); // Node is now connected to the graph
+                        }
 
                         totalCandidatesSoFar++;
 
@@ -206,11 +184,136 @@ namespace Assets.Scripts.Generator.Implementation
                 nodesToBeProcessedNext.Clear();
             }
 
+            // Everything is processed, now just need to deal with the nodes not confirmed to be connected
+            Debug.Log("Leftover(unconnected) " + unconnectedGraphNodes.Count);
+
+            // Precalculcate the closest distance
+            Chunk closestUnconnectedNode = null;
+            Chunk closestConnectedNode = null;
+            float closestDistance = float.MaxValue;
+            Dictionary<Chunk, float> unconnectedClosestDistance = new Dictionary<Chunk, float>();
+            Dictionary<Chunk, Chunk> unconnectedClosestChunk = new Dictionary<Chunk, Chunk>();
+
+            foreach (Chunk unconnectedNode in unconnectedGraphNodes)
+            {
+                Chunk localClosestConnectedNode = null;
+                float localClosestDistance = float.MaxValue;
+
+                foreach (Chunk connectedNode in connectedGraphNodes)
+                {
+                    // Get the distance between the nodes
+                    float distance = Mathf.Sqrt(Mathf.Pow(unconnectedNode.getRowIndex() - connectedNode.getRowIndex(), 2) +
+                        Mathf.Pow(unconnectedNode.getColIndex() - connectedNode.getColIndex(), 2));
+
+                    // Check if it is closer than the top so far for this unconnected chunk
+                    if (distance < localClosestDistance)
+                    {
+                        localClosestDistance = distance;
+                        localClosestConnectedNode = connectedNode;
+                    }
+                }
+
+                // Add to the dictionary for lookup later
+                unconnectedClosestDistance[unconnectedNode] = localClosestDistance;
+                unconnectedClosestChunk[unconnectedNode] = localClosestConnectedNode;
+
+                // Check globally
+                if (localClosestDistance < closestDistance)
+                {
+                    closestDistance = localClosestDistance;
+                    closestUnconnectedNode = unconnectedNode;
+                    closestConnectedNode = localClosestConnectedNode;
+                }
+            }
+
+            // Find the closest unprocessed node to the connected graph
+            while (unconnectedGraphNodes.Count > 0)
+            {
+                Debug.Log("Leftover: " + unconnectedGraphNodes.Count);
+
+                // Connect these nodes together and process
+                // TODO: This is duplicated, best to refactor and remove later
+                chunkGraph.linkNode(closestConnectedNode, closestUnconnectedNode);
+
+                connectedGraphNodes.Add(closestUnconnectedNode); // Node is now connected to the graph
+                unconnectedGraphNodes.Remove(closestUnconnectedNode);
+                foreach (Chunk unconnectedNode in unconnectedGraphNodes) // Check if this newly connected node is closer to any of the other nodes
+                {
+                    // Get the distance between the nodes
+                    float distance = Mathf.Sqrt(Mathf.Pow(unconnectedNode.getRowIndex() - closestUnconnectedNode.getRowIndex(), 2) +
+                        Mathf.Pow(unconnectedNode.getColIndex() - closestUnconnectedNode.getColIndex(), 2));
+
+                    if (distance < unconnectedClosestDistance[unconnectedNode]) // Check if it is locally better
+                    {
+                        unconnectedClosestDistance[unconnectedNode] = distance;
+                        unconnectedClosestChunk[unconnectedNode] = closestUnconnectedNode;
+                    }
+                }
+
+                // Recursively find all nodes connected to it and mark them as connected too
+                HashSet<Chunk> newlyConnectedNodes = findOtherConnectedNodes(chunkGraph, unconnectedGraphNodes, closestUnconnectedNode);
+                foreach (Chunk newlyConnectedNode in newlyConnectedNodes)
+                {
+                    connectedGraphNodes.Add(newlyConnectedNode); // Node is now connected to the graph
+                    unconnectedGraphNodes.Remove(newlyConnectedNode);
+
+                    foreach (Chunk unconnectedNode in unconnectedGraphNodes) // Check if this newly connected node is closer to any of the other nodes
+                    {
+                        // Get the distance between the nodes
+                        float distance = Mathf.Sqrt(Mathf.Pow(unconnectedNode.getRowIndex() - newlyConnectedNode.getRowIndex(), 2) +
+                            Mathf.Pow(unconnectedNode.getColIndex() - newlyConnectedNode.getColIndex(), 2));
+
+                        if (distance < unconnectedClosestDistance[unconnectedNode]) // Check if it is locally better
+                        {
+                            unconnectedClosestDistance[unconnectedNode] = distance;
+                            unconnectedClosestChunk[unconnectedNode] = newlyConnectedNode;
+                        }
+                    }
+                }
+
+                // Work out the new closest node
+                closestDistance = float.MaxValue;
+                foreach (Chunk unconnectedNode in unconnectedGraphNodes)
+                {
+                    float nodeDistance = unconnectedClosestDistance[unconnectedNode];
+                    if (nodeDistance < closestDistance)
+                    {
+                        closestDistance = nodeDistance;
+                        closestUnconnectedNode = unconnectedNode;
+                        closestConnectedNode = unconnectedClosestChunk[unconnectedNode];
+                    }
+                }
+            }
+
             // Last. Create a road network
             RoadNetwork roadNetwork = new RoadNetworkImpl();
             roadNetwork.setMainChunkConnections(chunkGraph);
 
             return roadNetwork;
+        }
+
+        private HashSet<Chunk> findOtherConnectedNodes(ChunkGraph chunkGraph, HashSet<Chunk> unconnectedNodes, Chunk node)
+        {
+            HashSet<Chunk> newlyConnectedNodes = new HashSet<Chunk>();
+
+            findOtherConnectedNodes(chunkGraph, unconnectedNodes, node, newlyConnectedNodes);
+
+            return newlyConnectedNodes;
+        }
+
+        private void findOtherConnectedNodes(ChunkGraph chunkGraph, HashSet<Chunk> unconnectedNodes, Chunk node, HashSet<Chunk> newlyConnectedNodes)
+        {
+            foreach (Chunk linkedChunk in chunkGraph.getConnectedNodes(node))
+            {
+                // Check it is unconnected and hasn't already been found
+                if (unconnectedNodes.Contains(linkedChunk) && !newlyConnectedNodes.Contains(linkedChunk))
+                {
+                    // It is now connected
+                    newlyConnectedNodes.Add(linkedChunk);
+
+                    findOtherConnectedNodes(chunkGraph, unconnectedNodes, linkedChunk, newlyConnectedNodes);
+                }
+            }
         }
 
         public Land.Landmass getLandmass()

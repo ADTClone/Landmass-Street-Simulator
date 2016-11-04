@@ -81,8 +81,10 @@ public class TestHarness : MonoBehaviour {
 
     private void runHarness()
     {
+        float startTime = Time.realtimeSinceStartup;
+
         // 1. Create a landmass
-        landmass = new Landmass(1000000, 1000000, 1000);
+        landmass = new Landmass(100000, 100000, 1000);
 
         Debug.Log("Number of chunks: " + landmass.getChunks().Count);
 
@@ -104,6 +106,10 @@ public class TestHarness : MonoBehaviour {
         RoadGenerator roadGenerator = new RoadGeneratorImpl(landmass);
         RoadNetwork roadNetwork = roadGenerator.generateRoads();
         landmass.setRoadNetwork(roadNetwork);
+
+        float endTime = Time.realtimeSinceStartup;
+
+        Debug.Log("Total time: " + (endTime - startTime) + " seconds");
     }
 
     /// <summary>
@@ -163,14 +169,16 @@ public class TestHarness : MonoBehaviour {
 
             // Get the nodes colour
             Color nodeColor = Color.white;
+            int spriteOrder = 5;
             if (landmass.getDemographics().isCity(chunk))
             {
                 nodeColor = Color.red;
+                spriteOrder = 10;
             }
 
             // Create the node
             GameObject node = createNode(new Vector2(chunk.getRowIndex() * rowsFactor - rowDim / 2.0f,
-                        chunk.getColIndex() * colsFactor - colDim / 2.0f), nodeColor);
+                        chunk.getColIndex() * colsFactor - colDim / 2.0f), nodeColor, spriteOrder);
             roadRepresentationObjects.Add(node);
 
             drawnChunks.Add(chunk);
@@ -197,11 +205,12 @@ public class TestHarness : MonoBehaviour {
         return gameObject;
     }
 
-    private GameObject createNode(Vector2 position, Color color)
+    private GameObject createNode(Vector2 position, Color color, int spriteOrder)
     {
         GameObject node = Instantiate(nodePrefab);
         node.transform.position = new Vector3(position.x, position.y);
         node.GetComponent<SpriteRenderer>().color = color;
+        node.GetComponent<SpriteRenderer>().sortingOrder = spriteOrder;
 
         return node;
     }

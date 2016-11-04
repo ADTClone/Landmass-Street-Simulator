@@ -27,7 +27,7 @@ namespace Assets.Scripts.Generator.Implementation
         private const float CHUNK_PCT_DECAY = 0.01f;
         private const float CHUNK_PCT_MIN = 0.01f;
         private const int MAXIMUM_SUBURBS_PER_CITY = 100;
-        private const float RANGE_EXPANSION_FACTOR = 1.3f;
+        private const float RANGE_EXPANSION_FACTOR = 1.3f; // TODO: Rethink, needs to be more smooth
 
         // Variables
         private Landmass landmass;
@@ -117,8 +117,8 @@ namespace Assets.Scripts.Generator.Implementation
                             break;
                         }
 
-                        // TODO: Vary range a bit more with randomness
-                        UnityEngine.Vector2 randomRangeCircle = UnityEngine.Random.insideUnitCircle * (range + 0.5f);
+                        // TODO: Vary range a bit more with randomness(an example is there)
+                        UnityEngine.Vector2 randomRangeCircle = UnityEngine.Random.insideUnitCircle * (range + 0.5f /*+ UnityEngine.Random.Range(0, range * RANGE_EXPANSION_FACTOR)*/);
                         
                         // Get the row/col indexes as deviations from the city chunk index
                         int rowIndex = (int)Math.Round(randomRangeCircle.x) + cityChunk.getRowIndex();
