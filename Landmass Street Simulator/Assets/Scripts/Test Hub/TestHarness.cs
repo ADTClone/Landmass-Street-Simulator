@@ -84,7 +84,7 @@ public class TestHarness : MonoBehaviour {
         float startTime = Time.realtimeSinceStartup;
 
         // 1. Create a landmass
-        landmass = new Landmass(100000, 100000, 1000);
+        landmass = new Landmass(1000000, 1000000, 1000);
 
         Debug.Log("Number of chunks: " + landmass.getChunks().Count);
 

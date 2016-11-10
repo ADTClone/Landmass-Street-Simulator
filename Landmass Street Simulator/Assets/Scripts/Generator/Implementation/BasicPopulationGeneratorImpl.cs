@@ -27,7 +27,7 @@ namespace Assets.Scripts.Generator.Implementation
         private const float CHUNK_PCT_DECAY = 0.01f;
         private const float CHUNK_PCT_MIN = 0.01f;
         private const int MAXIMUM_SUBURBS_PER_CITY = 100;
-        private const float RANGE_EXPANSION_FACTOR = 1.3f; // TODO: Rethink, needs to be more smooth
+        //private const float RANGE_EXPANSION_FACTOR = 1.01f; // TODO: Rethink, needs to be more smooth
 
         // Variables
         private Landmass landmass;
@@ -151,7 +151,7 @@ namespace Assets.Scripts.Generator.Implementation
                     }
 
                     // ii) Expand the range
-                    range = (int)Math.Ceiling(range * RANGE_EXPANSION_FACTOR);
+                    range = getNextRange(range);
                 }
 
                 // e) Create the city
@@ -179,6 +179,30 @@ namespace Assets.Scripts.Generator.Implementation
         public Landmass getLandmass()
         {
             return landmass;
+        }
+
+        /// <summary>
+        /// Gets the next range based on the previous range.
+        /// </summary>
+        /// <param name="previousRange">The previous range.</param>
+        /// <returns>The next range</returns>
+        private int getNextRange(int previousRange)
+        {
+            // TODO: Put this into settings somehow
+            // TODO: Need this in the perspective of distances
+            // Define three phases of growth
+            if (previousRange <= 30)
+            {
+                return previousRange + 5;
+            }
+            else if (previousRange <= 100)
+            {
+                return previousRange + 10;
+            }
+            else
+            {
+                return previousRange + 30;
+            }
         }
 
         /// <summary>
