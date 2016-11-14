@@ -189,13 +189,18 @@ namespace Assets.Scripts.Generator.Implementation
         private int getNextRange(int previousRange)
         {
             // TODO: Put this into settings somehow
-            // TODO: Need this in the perspective of distances
+            float distance = convertRangeToDistance(previousRange);
+
+            // For now, we will judge by a proportion of its length. Change to use realistic
+            // size scaling later on.
+            float lengthProp = landmass.getLength() / distance;
+
             // Define three phases of growth
-            if (previousRange <= 30)
+            if (lengthProp <= 0.05f)
             {
                 return previousRange + 5;
             }
-            else if (previousRange <= 100)
+            else if (lengthProp <= 0.10f)
             {
                 return previousRange + 10;
             }
@@ -203,6 +208,16 @@ namespace Assets.Scripts.Generator.Implementation
             {
                 return previousRange + 30;
             }
+        }
+
+        /// <summary>
+        /// Converts a given range into a distance based off the land mass.
+        /// </summary>
+        /// <param name="range">The range to convert.</param>
+        /// <returns>The distance equivilant of the range in the context of the landmass.</returns>
+        private float convertRangeToDistance(int range)
+        {
+            return range * landmass.getChunkSize();
         }
 
         /// <summary>
